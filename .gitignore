@@ -3,3 +3,4 @@ data/*.tar.gz
 web/images/
 datasets/
 /*.zip
+data/demo-*.png

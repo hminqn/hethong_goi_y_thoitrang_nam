@@ -67,3 +67,7 @@ README gốc trong dataset trích dẫn Vasileva, Plummer, Dusad, Rajpal, Kumar 
 Metadata mới đã được xác minh SHA-256. Đã học lại 497 sản phẩm nam train, 69 bộ có ít nhất hai món nam; 7 kiểm thử đạt. Bài kiểm tra riêng có 257 câu test, chọn đúng 88 câu (34,2%), baseline cosine 33,1%, ngẫu nhiên 25%. Validation sau loại bộ trùng món train chỉ còn 8 câu, vì vậy lựa chọn K và chênh lệch kết quả chỉ mang tính tham khảo. Nguồn gắn tên disjoint nhưng kiểm tra phần nam vẫn phát hiện trùng train/valid; các bộ có món train được loại khỏi đánh giá. Không khẳng định split của bản mirror hoàn toàn item-disjoint.
 
 Trình tải nền được ưu tiên images.zip. Khi ZIP tải đủ và kiểm tra SHA-256 xong, nó tự chạy script nhập ảnh cho website. Các tệp đặc trưng lớn vẫn tiếp tục được tải, không bỏ khỏi yêu cầu tải đầy đủ.
+
+## Phạm vi repo GitHub
+
+Repo chứa mã nguồn, danh mục sản phẩm đã xử lý trong web/catalog.js, mô hình và báo cáo đánh giá. Dataset Stylique/Polyvore gốc có tại https://huggingface.co/datasets/Stylique/Polyvore. Chạy scripts/index-images.mjs để lập lại chỉ mục sau khi có ảnh cục bộ.
