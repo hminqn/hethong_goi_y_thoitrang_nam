@@ -1,5 +1,7 @@
 # FORM — Gợi ý phối đồ nam với Stylique/Polyvore
 
+Tác giả dự án: [hminqn](https://github.com/hminqn).
+
 Dự án chỉ dùng https://huggingface.co/datasets/Stylique/Polyvore. Dataset GitHub xthan cũ và các artifact học từ bộ đó đã được gỡ.
 
 ## Chạy website
