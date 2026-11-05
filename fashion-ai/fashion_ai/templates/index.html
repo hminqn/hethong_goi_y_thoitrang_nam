@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="csrf-token" content="{{ csrf }}">
+<title>FORM AI · Phối đồ từ ảnh</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+<a href="#" class="brand">FORM<span>AI / MENSWEAR</span>
+</a>
+<nav>
+<a href="#upload">Ảnh của bạn</a>
+<a href="#catalog">Kho trang phục</a>
+<a href="#reports">Đánh giá</a>
+</nav>
+<span class="privacy">● XỬ LÝ TRÊN MÁY</span>
+</header>
+<main>
+<section class="hero">
+<div>
+<p class="eyebrow">FASHIONPEDIA × POLYVORE OUTFITS</p>
+<h1>Gợi ý phối đồ<br>từ ảnh của bạn.</h1>
+<p>Chọn một món muốn giữ. Tìm các món bổ sung, xem điểm tương thích và khám phá tối đa năm bộ áo–quần–giày.</p>
+<a class="primary" href="#upload">Chọn ảnh trang phục ↗</a>
+</div>
+<aside>
+<p class="eyebrow">NĂM THÀNH PHẦN</p>
+<ol>
+<li>Mask R-CNN · tách trang phục</li>
+<li>ResNet-50 + Triplet Loss · tìm món tương tự</li>
+<li>FP-Growth · luật phối đồ</li>
+<li>Random Forest · điểm tương thích</li>
+<li>Điểm trọng số + MMR · chọn bộ đa dạng</li>
+</ol>
+</aside>
+</section>
+<section class="status-grid" aria-label="Trạng thái mô hình">
+{% for name, ready in status.items() %}
+<div class="status-card {{ 'ready' if ready else 'pending' }}">
+<span {% if name == 'Phân đoạn Fashionpedia' %}id="detector-phase"{% endif %}>{{ '● SẴN SÀNG' if ready else '○ CHỜ HUẤN LUYỆN' }}</span>
+<strong>{{ name }}</strong>
+</div>
+{% endfor %}
+</section>
+<p id="detector-progress" class="hint" role="status">{{ detector_progress.message }}</p>
+<section id="upload">
+<div class="section-head">
+<div>
+<p class="eyebrow">01 / GIỮ MÓN BẠN THÍCH</p>
+<h2>Ảnh trang phục của bạn</h2>
+</div>
+<span class="tag">JPG / PNG / WEBP · 12 MB</span>
+</div>
+<div class="columns">
+<form id="upload-form" class="panel">
+<label for="photo">Chọn ảnh</label>
+<input id="photo" name="image" type="file" accept="image/jpeg,image/png,image/webp" required>
+<div class="stage">
+<p id="placeholder">Ảnh bạn chọn sẽ hiển thị tại đây.</p>
+<canvas id="preview" hidden aria-label="Ảnh trang phục; kéo để khoanh vùng món muốn giữ">
+</canvas>
+</div>
+<label for="mode">Cách chọn món</label>
+<select id="mode">
+<option value="detect">Phân đoạn tự động bằng Mask R-CNN</option>
+<option value="manual">Tự khoanh vùng để kiểm tra gợi ý</option>
+</select>
+<div id="manual-fields" hidden>
+<p class="hint">Kéo trên ảnh để khoanh một món rồi chọn loại đồ.</p>
+<label for="role">Loại món đã khoanh</label>
+<select id="role">
+<option value="top">Áo</option>
+<option value="bottom">Quần</option>
+<option value="shoes">Giày</option>
+</select>
+</div>
+<button class="primary" type="submit">Tìm món trong ảnh ↗</button>
+<p class="hint">Ảnh được xử lý trong trình duyệt và tiến trình localhost. Những vùng ảnh đang dùng được giữ tạm trong bộ nhớ máy.</p>
+</form>
+<div class="panel">
+<h3>Chọn món muốn giữ</h3>
+<p class="hint">Phân đoạn trả lại ảnh từng món. Chọn một món để tạo gợi ý.</p>
+<div id="detections" class="detections">
+</div>
+<p id="message" role="status">Chọn ảnh để bắt đầu.</p>
+</div>
+</div>
+</section>
+<section id="results" hidden>
+<div class="section-head">
+<div>
+<p class="eyebrow">02 / HOÀN THIỆN BỘ ĐỒ</p>
+<h2>Các bộ phối được gợi ý</h2>
+</div>
+</div>
+<p class="hint">Mỗi bộ giữ vùng ảnh bạn chọn và bổ sung hai vai trò còn thiếu. Điểm xếp hạng kết hợp mô hình tương thích, luật và cosine; MMR ưu tiên thêm độ đa dạng.</p>
+<div id="outfits">
+</div>
+</section>
+<section id="catalog">
+<div class="section-head">
+<div>
+<p class="eyebrow">03 / POLYVORE TRAIN</p>
+<h2>Thử từ kho trang phục</h2>
+</div>
+<span class="tag">{{ catalog|length }} MÓN ÁO / QUẦN / GIÀY</span>
+</div>
+<label for="search">Tìm món trong kho</label>
+<input id="search" type="search" placeholder="Tên tiếng Anh, mã hoặc loại đồ…">
+<div class="catalog">
+{% for item in catalog %}
+<article class="product" data-search="{{ (item.name ~ ' ' ~ item.id ~ ' ' ~ item.role)|lower }}" {% if loop.index > 12 %}hidden{% endif %}>
+<img src="/catalog-images/{{ item.id }}" alt="{{ item.name }}" loading="lazy">
+<div>
+<small>{{ item.role }} / {{ item.id }}</small>
+<h3>{{ item.name }}</h3>
+<button type="button" class="pick" data-id="{{ item.id }}">Giữ món này ↗</button>
+</div>
+</article>
+{% endfor %}
+</div>
+<button id="more-items" class="primary" type="button">Xem thêm sản phẩm</button>
+</section>
+<section id="reports">
+<div class="section-head">
+<div>
+<p class="eyebrow">04 / KẾT QUẢ ĐÁNH GIÁ</p>
+<h2>Báo cáo từ mô hình đã chạy</h2>
+</div>
+</div>
+{% if reports %}{% for name, report in reports.items() %}
+<details>
+<summary>{{ name }}</summary>
+<pre>{{ report|tojson(indent=2) }}</pre>
+</details>
+{% endfor %}{% else %}
+<p class="hint">Báo cáo sẽ được hiển thị sau khi các lệnh huấn luyện và đánh giá hoàn tất.</p>
+{% endif %}
+<p class="hint">Fashionpedia huấn luyện phân đoạn. Polyvore huấn luyện đặc trưng, luật và tương thích. Nhãn đồ nam được lọc từ metadata; kết quả đánh giá phải được đọc cùng cỡ mẫu và quy trình tạo âm tính trong báo cáo.</p>
+</section>
+</main>
+<footer>
+<span>FORM AI · hminqn</span>
+<span>Fashionpedia / Polyvore Outfits · Phân tích trên máy</span>
+</footer>
+<script src="{{ url_for('static', filename='app.js') }}">
+</script>
+</body>
+</html>

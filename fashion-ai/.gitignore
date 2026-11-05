@@ -1,0 +1,7 @@
+.venv/
+.uv-cache/
+.cache/
+artifacts/
+__pycache__/
+*.pyc
+.test-temp/

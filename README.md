@@ -1,75 +1,61 @@
-# FORM — Gợi ý phối đồ nam với Stylique/Polyvore
+# FORM AI — Hệ thống gợi ý phối đồ thời trang nam
 
-Tác giả dự án: [hminqn](https://github.com/hminqn).
+Tác giả: [hminqn](https://github.com/hminqn).
 
-Dự án chỉ dùng https://huggingface.co/datasets/Stylique/Polyvore. Dataset GitHub xthan cũ và các artifact học từ bộ đó đã được gỡ.
+Mã nguồn hiện tại được viết lại trong **[fashion-ai/](fashion-ai/)**. Hệ thống xử lý ảnh và suy luận trên máy, không sử dụng dịch vụ API bên ngoài khi chạy.
+
+## Luồng hoạt động
+
+Ảnh người dùng → nhận diện và phân đoạn → chọn món muốn giữ → trích xuất đặc trưng → tìm món bổ sung theo luật → chấm điểm tương thích → chọn tối đa 5 bộ áo–quần–giày.
+
+## Dataset và thuật toán
+
+| Thành phần | Dataset | Thuật toán |
+| --- | --- | --- |
+| Nhận diện, phân đoạn trang phục | Fashionpedia | Mask R-CNN, ResNet-50 + FPN |
+| Học đặc trưng, tìm món tương tự | Polyvore Outfits ECCV 2018, disjoint | ResNet-50 + Triplet Loss, cosine similarity |
+| Khai phá quy luật phối đồ | Polyvore train | FP-Growth, so sánh Apriori |
+| Phân loại độ tương thích bộ đồ | Polyvore disjoint | Random Forest, so sánh Logistic Regression |
+| Kết hợp và xếp hạng gợi ý | Polyvore valid/test | Điểm có trọng số và MMR |
+
+Xem [hướng dẫn cài đặt, huấn luyện, đánh giá và phân công](fashion-ai/README.md).
 
 ## Chạy website
 
-Cần Node.js 20 trở lên, không npm install và không API khi sử dụng:
+Cần Python 3.12 và các artifact đã được tạo bằng các bước huấn luyện trong tài liệu.
 
 ```powershell
-node scripts/serve.mjs
+cd fashion-ai
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m fashion_ai.app
 ```
 
-Mở http://localhost:3000. Nếu metadata mới chưa tải đủ, website thông báo chờ dữ liệu thay vì hiển thị kết quả cũ.
+Mở **http://127.0.0.1:5000**. Website hiển thị trạng thái từng mô hình. Khi Fashionpedia chưa có checkpoint, có thể tự khoanh vùng món trong ảnh hoặc chọn món từ kho đã chuẩn bị để kiểm tra phần gợi ý.
 
-## Tải và chuẩn bị dữ liệu
+## Huấn luyện Fashionpedia đầy đủ
 
-Dataset tại `datasets/Stylique-Polyvore`. Theo dõi `.download/download-report.json` và `TRANG-THAI-TAI.md` trong thư mục đó. Tổng bản nguồn gồm 35 tệp khoảng 17 GB; ảnh `images.zip` 2,52 GB. Tải nền vẫn giữ nguyên.
+Trong thư mục fashion-ai, chạy:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/start-polyvore-download.ps1
-node scripts/train.mjs
+.\train-fashionpedia.ps1
 ```
 
-Train cần metadata đầy đủ, SHA-256 khớp manifest nguồn. Không đọc các tệp .part/.tail và không quay về dataset cũ nếu nguồn mới chưa sẵn sàng. Học xong, tải lại trình duyệt.
+Script tải toàn bộ ảnh/nhãn từ nguồn chính thức, kiểm tra dữ liệu, rồi huấn luyện 10 epoch trên 45.623 ảnh train và đánh giá trên 1.158 ảnh validation. Cấu hình CPU: batch 1, cạnh ngắn 512, cạnh dài tối đa 768. Lưu checkpoint mỗi 100 batch và hỗ trợ tiếp tục khi bị ngắt. Website tự cập nhật tiến độ. Quy trình đã được khởi động trên máy phát triển; chưa công bố checkpoint Fashionpedia hoàn chỉnh.
 
-Sau khi `images.zip` tải đủ:
+## Kết quả ban đầu
+
+Đã huấn luyện projection của encoder 2 epoch, trích xuất embedding, khai phá 206 luật, huấn luyện RF/LR và chọn cấu hình MMR. RF đạt ROC-AUC khoảng 0,535 trên test âm tính tổng hợp; Hit@5 xếp hạng khoảng 0,274 theo phép thử tự xây dựng. Kết quả còn thấp, cần cải thiện trước khi kết luận chất lượng. Các giới hạn và giao thức đánh giá được ghi trong [tài liệu mô hình](fashion-ai/README.md).
+
+12 kiểm thử đã đạt, gồm tiếp tục huấn luyện đúng batch, tách dữ liệu, luật, MMR và luồng tải ảnh → khoanh vùng → gợi ý với checkpoint thật trên máy phát triển.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/import-stylique-images.ps1
+cd fashion-ai
+.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Lệnh xác minh SHA-256 ảnh ZIP, trích ảnh của danh mục nam vào `web/images/<item_id>.jpg` và tạo chỉ mục ảnh. Không ghép ảnh theo tên hoặc ID bộ cũ. Nếu chưa có ảnh, giao diện chỉ dùng minh họa loại đồ và ghi rõ.
+## Phạm vi repository
 
-## Cấu trúc nguồn mới
+Repository chứa mã nguồn và hướng dẫn tái lập. Dataset, ảnh sản phẩm, môi trường .venv, cache và artifact huấn luyện nằm trong .gitignore; cần tải dữ liệu và chạy các bước chuẩn bị/huấn luyện khi cài trên máy mới. Các thư mục web/, scripts/, tests/ và data/ ở gốc là bản triển khai JavaScript trước đây; ứng dụng mới dùng fashion-ai/.
 
-- `polyvore_item_metadata.json`: từ điển theo item_id. Có title/url_name, description, đường dẫn danh mục (khóa gốc viết là catgeories), category_id và semantic_category.
-- `polyvore_outfit_titles.json`: tên bộ theo set_id.
-- `categories.csv`: category_id, loại chi tiết, nhóm ngữ nghĩa; một ID có thể có nhiều loại chi tiết, không được coi một nhãn male trong số đó là nhãn nam cho toàn bộ ID.
-- `disjoint/train.json`, `valid.json`, `test.json`: bộ có set_id và danh sách item_id/index. Các split được giữ nguyên; chỉ học TF-IDF, K-Means và kho KNN từ train.
-- `nondisjoint` và `maryland_polyvore_hardneg` vẫn được tải đầy đủ, nhưng không được trộn vào mô hình đang dùng split disjoint.
-
-## Lọc đồ nam
-
-Ưu tiên loại metadata có Women's/Female trong đường dẫn danh mục hoặc trường Gender: Female trong mô tả. Giữ sản phẩm có một trong các bằng chứng: đường dẫn danh mục nam; Gender: Male trong mô tả; hoặc category_id chỉ có các nhãn fine-grained bắt đầu bằng male trong categories.csv. Đây là quy tắc lọc metadata, không phải nhãn giới tính độc lập được xác thực; ghi bằng chứng cho từng sản phẩm.
-
-Không dùng substring men để khớp women's. Không suy luận giới tính từ khuôn mặt hoặc cơ thể. Sản phẩm không có bằng chứng nam hoặc không thuộc vai trò được hỗ trợ bị loại. Chỉ phần món nam được giữ từ một bộ; không khẳng định cả bộ gốc là đồ nam.
-
-## K-Means, KNN, Cosine Similarity
-
-TF-IDF dùng tên/nhóm sản phẩm, từ vựng chỉ học trên train. Vector món và vector gộp bộ được chuẩn hóa L2. K-Means Lloyd/Euclidean chia 8 cụm, tối đa 30 vòng, khởi tạo xác định. KNN truy hồi K bộ lân cận theo cosine (K chọn từ 5/10/20 trên valid). Điểm ứng viên bổ sung = 0,35 bằng chứng trong bộ lân cận + 0,40 tương đồng với món cùng vai trò trong bộ lân cận + 0,25 cosine truy vấn. Đây là điểm thiết kế, không phải xác suất phối đẹp.
-
-Kiểm tra tự xây dựng: che một món nam trong bộ valid/test, thêm ba món khác cùng vai trò từ chính split giữ lại và xếp hạng bốn lựa chọn. TF-IDF, centroid và bộ KNN không học từ test. Báo cáo sau khi train: `data/model-report.json`; không dùng lại con số 52,4% hoặc 1.694 sản phẩm của dataset cũ. Phép thử không phải benchmark FITB chính thức hoặc chấm thẩm mỹ; các câu cùng bộ có thể tương quan.
-
-## Kiểm tra
-
-```powershell
-node --test tests/core.test.cjs tests/stylique.test.cjs
-```
-
-Kiểm tra artifact được bỏ qua có thông báo nếu metadata chưa tải đủ; khi train hoàn tất, nó kiểm tra nguồn Stylique, bằng chứng lọc nam và bộ train disjoint.
-
-## Nguồn nghiên cứu
-
-README gốc trong dataset trích dẫn Vasileva, Plummer, Dusad, Rajpal, Kumar & Forsyth, *Learning Type-Aware Embeddings for Fashion Compatibility*, ECCV 2018. Giữ nguyên tài liệu nguồn và các điều kiện sử dụng đi kèm trong `datasets/Stylique-Polyvore/README`.
-## Trạng thái chuyển đổi hiện tại
-
-Metadata mới đã được xác minh SHA-256. Đã học lại 497 sản phẩm nam train, 69 bộ có ít nhất hai món nam; 7 kiểm thử đạt. Bài kiểm tra riêng có 257 câu test, chọn đúng 88 câu (34,2%), baseline cosine 33,1%, ngẫu nhiên 25%. Validation sau loại bộ trùng món train chỉ còn 8 câu, vì vậy lựa chọn K và chênh lệch kết quả chỉ mang tính tham khảo. Nguồn gắn tên disjoint nhưng kiểm tra phần nam vẫn phát hiện trùng train/valid; các bộ có món train được loại khỏi đánh giá. Không khẳng định split của bản mirror hoàn toàn item-disjoint.
-
-Trình tải nền được ưu tiên images.zip. Khi ZIP tải đủ và kiểm tra SHA-256 xong, nó tự chạy script nhập ảnh cho website. Các tệp đặc trưng lớn vẫn tiếp tục được tải, không bỏ khỏi yêu cầu tải đầy đủ.
-
-## Phạm vi repo GitHub
-
-Repo chứa mã nguồn, danh mục sản phẩm đã xử lý trong web/catalog.js, mô hình và báo cáo đánh giá. Dataset Stylique/Polyvore gốc có tại https://huggingface.co/datasets/Stylique/Polyvore. Chạy scripts/index-images.mjs để lập lại chỉ mục sau khi có ảnh cục bộ.
+Nguồn dữ liệu: [Fashionpedia](https://github.com/cvdfoundation/fashionpedia), [Polyvore mirror Stylique](https://huggingface.co/datasets/Stylique/Polyvore). Giữ các điều kiện sử dụng và trích dẫn đi kèm dữ liệu gốc.

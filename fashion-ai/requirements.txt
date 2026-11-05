@@ -1,0 +1,11 @@
+torch==2.9.0
+torchvision==0.24.0
+numpy==2.2.6
+pandas==2.3.3
+scikit-learn==1.7.2
+mlxtend==0.23.4
+Pillow==11.3.0
+pycocotools==2.0.10
+torchmetrics==1.8.2
+Flask==3.1.2
+joblib==1.5.2
